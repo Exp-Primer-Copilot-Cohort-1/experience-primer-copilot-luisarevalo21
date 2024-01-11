@@ -1,24 +1,87 @@
-//create web server
-//create a web server
-const express = require('express');
-const app = express();
-//create a port
-const port = 3000;
-//create a static route
-app.use(express.static('public'));
-//create a route for comments
-app.get('/comments', (req, res) => {
-    res.send('Comments');
+// Create web server
+var express = require('express');
+var router = express.Router();
+var Comments = require('../models/comments');
+var mongoose = require('mongoose');
+
+// Connect to MongoDB
+mongoose.connect('mongodb://localhost:27017/comments');
+
+// On connection
+mongoose.connection.on('connected', () => {
+    console.log('Connected to database mongodb @ 27017');
 });
-//create a route for comments with a parameter
-app.get('/comments/:id', (req, res) => {
-    res.send('Comment ID: ' + req.params.id);
+
+// On error
+mongoose.connection.on('error', (err) => {
+    if (err) {
+        console.log('Error in database connection: ' + err);
+    }
 });
-//create a route for comments with a parameter
-app.get('/comments/:id/:title?', (req, res) => {
-    res.send('Comment ID: ' + req.params.id + ' and Title: ' + req.params.title);
+
+// Get all comments
+router.get('/', (req, res, next) => {
+    Comments.find((err, comments) => {
+        if (err) {
+            res.json(err);
+        } else {
+            res.json(comments);
+        }
+    });
 });
-//create a port listener
-app.listen(port, () => {
-    console.log('Listening on port: ' + port);
+
+// Get a single comment
+router.get('/:id', (req, res, next) => {
+    Comments.findById(req.params.id, (err, comment) => {
+        if (err) {
+            res.json(err);
+        } else {
+            res.json(comment);
+        }
+    });
 });
+
+// Add a comment
+router.post('/', (req, res, next) => {
+    let newComment = new Comments({
+        name: req.body.name,
+        comment: req.body.comment
+    });
+
+    newComment.save((err, comment) => {
+        if (err) {
+            res.json(err);
+        } else {
+            res.json({msg: 'Comment added successfully'});
+        }
+    });
+});
+
+// Update a comment
+router.put('/:id', (req, res, next) => {
+    Comments.findByIdAndUpdate(req.params.id, {
+        $set: {
+            name: req.body.name,
+            comment: req.body.comment
+        }
+    }, (err, comment) => {
+        if (err) {
+            res.json(err);
+        } else {
+            res.json({msg: 'Comment updated successfully'});
+        }
+    });
+});
+
+// Delete a comment
+router.delete('/:id', (req, res, next) => {
+    Comments.remove({_id: req.params.id}, (err, result) => {
+        if (err) {
+            res.json(err);
+        } else {
+            res.json({msg: 'Comment deleted successfully'});
+        }
+    });
+});
+
+module.exports = router;
